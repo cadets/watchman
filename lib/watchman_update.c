@@ -30,8 +30,8 @@
  * $Id$
  */
 
-#include "tesla_internal.h"
-#include "tesla_key.h"
+#include "watchman_internal.h"
+#include "watchman_key.h"
 
 #ifndef _KERNEL
 #include <stdbool.h>
@@ -39,23 +39,23 @@
 #endif
 
 
-static void tesla_update_class_state(struct tesla_class *, struct tesla_store *,
-	uint32_t symbol, const struct tesla_key *);
+static void watchman_update_class_state(struct watchman_class *, struct watchman_store *,
+	uint32_t symbol, const struct watchman_key *);
 
 
 void
-tesla_sunrise(enum tesla_context context, const struct tesla_lifetime *l)
+watchman_sunrise(enum watchman_context context, const struct watchman_lifetime *l)
 {
 	__unused int ret;
 	assert(l != NULL);
 
-	struct tesla_store *store;
-	ret = tesla_store_get(context, TESLA_MAX_CLASSES,
-			TESLA_MAX_INSTANCES, &store);
-	assert(ret == TESLA_SUCCESS);
+	struct watchman_store *store;
+	ret = watchman_store_get(context, WATCHMAN_MAX_CLASSES,
+			WATCHMAN_MAX_INSTANCES, &store);
+	assert(ret == WATCHMAN_SUCCESS);
 	assert(store->ts_lifetime_count < store->ts_length);
 
-	tesla_lifetime_state *ls = NULL;
+	watchman_lifetime_state *ls = NULL;
 
 	// TODO: lock global store
 
@@ -80,20 +80,20 @@ tesla_sunrise(enum tesla_context context, const struct tesla_lifetime *l)
 
 
 void
-tesla_sunset(enum tesla_context context, const struct tesla_lifetime *l)
+watchman_sunset(enum watchman_context context, const struct watchman_lifetime *l)
 {
 	__unused int ret;
 	assert(l != NULL);
 
 	ev_sunset(context, l);
 
-	struct tesla_store *store;
-	ret = tesla_store_get(context, TESLA_MAX_CLASSES,
-			TESLA_MAX_INSTANCES, &store);
-	assert(ret == TESLA_SUCCESS);
+	struct watchman_store *store;
+	ret = watchman_store_get(context, WATCHMAN_MAX_CLASSES,
+			WATCHMAN_MAX_INSTANCES, &store);
+	assert(ret == WATCHMAN_SUCCESS);
 	assert(store->ts_lifetime_count < store->ts_length);
 
-	tesla_lifetime_state *ls = NULL;
+	watchman_lifetime_state *ls = NULL;
 
 	const uint32_t lifetimes = store->ts_lifetime_count;
 	for (uint32_t i = 0; i < lifetimes; i++) {
@@ -103,20 +103,20 @@ tesla_sunset(enum tesla_context context, const struct tesla_lifetime *l)
 		}
 	}
 
-	assert(ls != NULL && "tesla_sunset() without corresponding sunrise");
+	assert(ls != NULL && "watchman_sunset() without corresponding sunrise");
 
-	tesla_key empty_key;
+	watchman_key empty_key;
 	empty_key.tk_mask = 0;
 
 	const size_t static_classes =
 		sizeof(ls->tls_classes) / sizeof(ls->tls_classes[0]);
 
 	for (size_t i = 0; i < static_classes; i++) {
-		tesla_class *class = ls->tls_classes[i];
+		watchman_class *class = ls->tls_classes[i];
 		if (class == NULL)
 			break;
 
-		tesla_update_class_state(class, store,
+		watchman_update_class_state(class, store,
 			class->tc_automaton->ta_cleanup_symbol, &empty_key);
 	}
 
@@ -124,11 +124,11 @@ tesla_sunset(enum tesla_context context, const struct tesla_lifetime *l)
 
 	const size_t dynamic_classes = ls->tls_dyn_count;
 	for (size_t i = 0; i < dynamic_classes; i++) {
-		tesla_class *class = ls->tls_dyn_classes[i];
+		watchman_class *class = ls->tls_dyn_classes[i];
 		if (class == NULL)
 			break;
 
-		tesla_update_class_state(class, store,
+		watchman_update_class_state(class, store,
 			class->tc_automaton->ta_cleanup_symbol, &empty_key);
 	}
 
@@ -138,43 +138,43 @@ tesla_sunset(enum tesla_context context, const struct tesla_lifetime *l)
 
 
 void
-tesla_update_state(enum tesla_context tesla_context,
-	const struct tesla_automaton *autom, uint32_t symbol,
-	const struct tesla_key *pattern)
+watchman_update_state(enum watchman_context watchman_context,
+	const struct watchman_automaton *autom, uint32_t symbol,
+	const struct watchman_key *pattern)
 {
-	struct tesla_store *store;
-	int ret = tesla_store_get(tesla_context, TESLA_MAX_CLASSES,
-			TESLA_MAX_INSTANCES, &store);
-	assert(ret == TESLA_SUCCESS);
+	struct watchman_store *store;
+	int ret = watchman_store_get(watchman_context, WATCHMAN_MAX_CLASSES,
+			WATCHMAN_MAX_INSTANCES, &store);
+	assert(ret == WATCHMAN_SUCCESS);
 
-	struct tesla_class *class;
-	ret = tesla_class_get(store, autom, &class);
-	assert(ret == TESLA_SUCCESS);
+	struct watchman_class *class;
+	ret = watchman_class_get(store, autom, &class);
+	assert(ret == WATCHMAN_SUCCESS);
 
-	tesla_update_class_state(class, store, symbol, pattern);
+	watchman_update_class_state(class, store, symbol, pattern);
 
-	tesla_class_put(class);
+	watchman_class_put(class);
 }
 
 
 static void
-tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
-	uint32_t symbol, const struct tesla_key *pattern)
+watchman_update_class_state(struct watchman_class *class, struct watchman_store *store,
+	uint32_t symbol, const struct watchman_key *pattern)
 {
 	int err;
-	const struct tesla_automaton *autom = class->tc_automaton;
+	const struct watchman_automaton *autom = class->tc_automaton;
 
 	// Make space for cloning existing instances.
 	size_t cloned = 0;
 	const size_t max_clones = class->tc_free;
 	struct clone_info {
-		tesla_instance *old;
-		const tesla_transition *transition;
+		watchman_instance *old;
+		const watchman_transition *transition;
 	} clones[max_clones];
 
 	// Has this class been initialised?
 	bool initialised = false;
-	tesla_lifetime_state *lifetime = NULL;
+	watchman_lifetime_state *lifetime = NULL;
 	const uint32_t lifetimes = store->ts_lifetime_count;
 	for (uint32_t i = 0; i < lifetimes; i++) {
 		if (!same_static_lifetime(autom->ta_lifetime,
@@ -193,25 +193,25 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 	} else if (class->tc_limit == class->tc_free) {
 		// Late initialisation: find the init transition and pretend
 		// it has already been taken.
-		struct tesla_instance *inst = NULL;
+		struct watchman_instance *inst = NULL;
 
 		for (uint32_t i = 0; i < autom->ta_alphabet_size; i++) {
-			const tesla_transitions *trans =
+			const watchman_transitions *trans =
 				autom->ta_transitions + i;
 
 			for (uint32_t j = 0; i < trans->length; i++) {
-				const tesla_transition *t =
+				const watchman_transition *t =
 					trans->transitions + j;
 
-				if (!(t->flags & TESLA_TRANS_INIT))
+				if (!(t->flags & WATCHMAN_TRANS_INIT))
 					continue;
 
-				static const tesla_key empty = { .tk_mask = 0 };
+				static const watchman_key empty = { .tk_mask = 0 };
 
-				err = tesla_instance_new(class, &empty,
+				err = watchman_instance_new(class, &empty,
 				                         t->to, &inst);
 
-				if (err != TESLA_SUCCESS) {
+				if (err != WATCHMAN_SUCCESS) {
 
 					ev_err(autom, symbol, err,
 					       "failed to initialise instance");
@@ -224,17 +224,17 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 
 		if (inst == NULL) {
 			// The automaton does not have an init transition!
-			err = TESLA_ERROR_EINVAL;
+			err = WATCHMAN_ERROR_EINVAL;
 			ev_err(autom, symbol, err,
 			       "automaton has no init transition");
 			return;
 		}
 
-		assert(tesla_instance_active(inst));
+		assert(watchman_instance_active(inst));
 		ev_new_instance(class, inst);
 
 		// Register this class for eventual cleanup.
-		tesla_lifetime_state *ls = lifetime;
+		watchman_lifetime_state *ls = lifetime;
 		const size_t static_classes =
 			sizeof(ls->tls_classes) / sizeof(ls->tls_classes[0]);
 
@@ -256,13 +256,13 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 			 *           leaving the allocation for a later time
 			 *           when we know it's safe.
 			 */
-			ev_err(autom, symbol, TESLA_ERROR_ENOMEM,
+			ev_err(autom, symbol, WATCHMAN_ERROR_ENOMEM,
 			       "out of static registration space in lifetime");
 #else
 			static size_t unit_size =
 				sizeof(ls->tls_dyn_classes[0]);
 
-			tesla_class ***dyn_classes = &ls->tls_dyn_classes;
+			watchman_class ***dyn_classes = &ls->tls_dyn_classes;
 
 			if (ls->tls_dyn_capacity == 0) {
 				// Need to create a fresh allocation.
@@ -291,20 +291,20 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 
 
 	// What transitions can we take?
-	const tesla_transitions *trans = autom->ta_transitions + symbol;
+	const watchman_transitions *trans = autom->ta_transitions + symbol;
 	assert(trans->length > 0);
 	assert(trans->length < 10000);
 
 	// Iterate over existing instances, figure out what to do with each.
-	err = TESLA_SUCCESS;
+	err = WATCHMAN_SUCCESS;
 	int expected = class->tc_limit - class->tc_free;
 	for (uint32_t i = 0; expected > 0 && (i < class->tc_limit); i++) {
 		assert(class->tc_instances != NULL);
-		tesla_instance *inst = class->tc_instances + i;
+		watchman_instance *inst = class->tc_instances + i;
 
-		const tesla_transition *trigger = NULL;
-		enum tesla_action_t action =
-			tesla_action(inst, pattern, trans, &trigger);
+		const watchman_transition *trigger = NULL;
+		enum watchman_action_t action =
+			watchman_action(inst, pattern, trans, &trigger);
 		expected -= action == IGNORE ? 0 : 1;
 
 		switch (action) {
@@ -322,14 +322,14 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 			inst->ti_state = trigger->to;
 			matched_something = true;
 
-			if (trigger->flags & TESLA_TRANS_CLEANUP)
+			if (trigger->flags & WATCHMAN_TRANS_CLEANUP)
 				ev_accept(class, inst);
 
 			break;
 
 		case FORK: {
 			if (cloned >= max_clones) {
-				err = TESLA_ERROR_ENOMEM;
+				err = WATCHMAN_ERROR_ENOMEM;
 				ev_err(autom, symbol, err, "too many clones");
 				return;
 			}
@@ -346,7 +346,7 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 			{
 			int target = -1;
 			for (uint32_t j = 0; j < class->tc_limit; j++) {
-				tesla_instance *t = class->tc_instances + j;
+				watchman_instance *t = class->tc_instances + j;
 				if (t->ti_state == trigger->to) {
 					target = j;
 					break;
@@ -355,28 +355,28 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 			assert(target >= 0);
 			}
 #endif
-			tesla_instance_clear(inst);
+			watchman_instance_clear(inst);
 			break;
 		}
 
-		if (trigger && (trigger->flags & TESLA_TRANS_CLEANUP))
+		if (trigger && (trigger->flags & WATCHMAN_TRANS_CLEANUP))
 			cleanup_required = true;
 	}
 
 	// Move any clones into the class.
 	for (size_t i = 0; i < cloned; i++) {
 		struct clone_info *c = clones + i;
-		struct tesla_instance *clone;
-		err = tesla_instance_clone(class, c->old, &clone);
-		if (err != TESLA_SUCCESS) {
+		struct watchman_instance *clone;
+		err = watchman_instance_clone(class, c->old, &clone);
+		if (err != WATCHMAN_SUCCESS) {
 			ev_err(autom, symbol, err, "failed to clone instance");
 			return;
 		}
 
-		tesla_key new_name = *pattern;
+		watchman_key new_name = *pattern;
 		new_name.tk_mask &= c->transition->to_mask;
-		err = tesla_key_union(&clone->ti_key, &new_name);
-		if (err != TESLA_SUCCESS) {
+		err = watchman_key_union(&clone->ti_key, &new_name);
+		if (err != WATCHMAN_SUCCESS) {
 			ev_err(autom, symbol, err, "failed to union keys");
 			return;
 		}
@@ -385,7 +385,7 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 
 		ev_clone(class, c->old, clone, c->transition);
 
-		if (c->transition->flags & TESLA_TRANS_CLEANUP)
+		if (c->transition->flags & WATCHMAN_TRANS_CLEANUP)
 			ev_accept(class, clone);
 	}
 
@@ -394,16 +394,16 @@ tesla_update_class_state(struct tesla_class *class, struct tesla_store *store,
 
 	// Does it cause class cleanup?
 	if (cleanup_required)
-		tesla_class_reset(class);
+		watchman_class_reset(class);
 }
 
-enum tesla_action_t
-tesla_action(const tesla_instance *inst, const tesla_key *event_data,
-	const tesla_transitions *trans, const tesla_transition* *trigger)
+enum watchman_action_t
+watchman_action(const watchman_instance *inst, const watchman_key *event_data,
+	const watchman_transitions *trans, const watchman_transition* *trigger)
 {
 	assert(trigger != NULL);
 
-	if (!tesla_instance_active(inst))
+	if (!watchman_instance_active(inst))
 		return IGNORE;
 
 	/*
@@ -413,7 +413,7 @@ tesla_action(const tesla_instance *inst, const tesla_key *event_data,
 	bool ignore = true;
 
 	for (size_t i = 0; i < trans->length; i++) {
-		const tesla_transition *t = trans->transitions + i;
+		const watchman_transition *t = trans->transitions + i;
 
 		if (t->from == inst->ti_state) {
 			assert(inst->ti_key.tk_mask == t->from_mask);
@@ -428,7 +428,7 @@ tesla_action(const tesla_instance *inst, const tesla_key *event_data,
 			 * transition in question may only care about x and z:
 			 * 'foo(x,*) == z'.
 			 */
-			tesla_key pattern = *event_data;
+			watchman_key pattern = *event_data;
 			pattern.tk_mask &= t->from_mask;
 
 			/*
@@ -436,7 +436,7 @@ tesla_action(const tesla_instance *inst, const tesla_key *event_data,
 			 * (except during automaton instance cleanup).
 			 */
 			if (!SUBSET(t->from_mask, t->to_mask)
-			    && ((t->flags & TESLA_TRANS_CLEANUP) == 0)) {
+			    && ((t->flags & WATCHMAN_TRANS_CLEANUP) == 0)) {
 				*trigger = t;
 				return JOIN;
 			}
@@ -450,11 +450,11 @@ tesla_action(const tesla_instance *inst, const tesla_key *event_data,
 				 * No: just just update the instance
 				 *     if its (masked) name matches.
 				 */
-				tesla_key masked_name = inst->ti_key;
+				watchman_key masked_name = inst->ti_key;
 				masked_name.tk_mask &=
 					(pattern.tk_mask | pattern.tk_freemask);
 
-				if (tesla_key_matches(&pattern, &masked_name)) {
+				if (watchman_key_matches(&pattern, &masked_name)) {
 					*trigger = t;
 					return UPDATE;
 				}
@@ -464,7 +464,7 @@ tesla_action(const tesla_instance *inst, const tesla_key *event_data,
 				 * Yes: we need to fork the generic instance
 				 *      into a more specific one.
 				 */
-				if (tesla_key_matches(&pattern, &inst->ti_key)) {
+				if (watchman_key_matches(&pattern, &inst->ti_key)) {
 					*trigger = t;
 					return FORK;
 				}
@@ -486,7 +486,7 @@ tesla_action(const tesla_instance *inst, const tesla_key *event_data,
 		 * transition must match; we are no longer allowed to ignore
 		 * this instance.
 		 */
-		if (tesla_key_matches(event_data, &inst->ti_key))
+		if (watchman_key_matches(event_data, &inst->ti_key))
 			ignore = false;
 	}
 
@@ -497,4 +497,4 @@ tesla_action(const tesla_instance *inst, const tesla_key *event_data,
 		return FAIL;
 }
 
-printf_type __tesla_printf = (printf_type)printf;
+printf_type __watchman_printf = (printf_type)printf;

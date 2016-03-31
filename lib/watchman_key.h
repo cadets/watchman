@@ -1,6 +1,5 @@
 /*-
- * Copyright (c) 2011 Robert N. M. Watson
- * Copyright (c) 2012-2013 Jonathan Anderson
+ * Copyright (c) 2013 Jonathan Anderson
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -31,33 +30,62 @@
  * $Id$
  */
 
-#include "tesla_internal.h"
+#include "watchman_internal.h"
+
+#ifndef _KERNEL
+#include <inttypes.h>
+#include <stdio.h>
+#endif
 
 
-void
-tesla_die(int32_t code, const char *event)
+#define	IS_SET(mask, index) (mask & (1 << index))
+
+/**
+ * Check to see if a key matches a pattern.
+ *
+ * @returns  1 if @a k matches @a pattern, 0 otherwise
+ */
+static inline int
+watchman_key_matches(const struct watchman_key *pattern, const struct watchman_key *k)
 {
+	assert(pattern != NULL);
+	assert(k != NULL);
 
-	tesla_panic("tesla_die: fatal error in event '%s'; %s\n",
-		event, tesla_strerror(code));
-}
+	// The pattern's mask must be a subset of the target's (ANY matches
+	// 42 but not the other way around).
+	if (!SUBSET(pattern->tk_mask | pattern->tk_freemask, k->tk_mask))
+		return (0);
 
-const char *
-tesla_strerror(int error)
-{
+	for (uint32_t i = 0; i < WATCHMAN_KEY_SIZE; i++) {
+		// Only check keys specified by the bitmasks.
+		uint32_t mask = (1 << i);
+		if ((pattern->tk_mask & mask) != mask)
+			continue;
 
-	switch (error) {
-	case TESLA_SUCCESS:
-		return ("Success");
-	case TESLA_ERROR_ENOENT:
-		return ("Entry not found");
-	case TESLA_ERROR_ENOMEM:
-		return ("Insufficient memory");
-	case TESLA_ERROR_EINVAL:
-		return ("Invalid argument");
-	case TESLA_ERROR_UNKNOWN:
-		return ("Unknown error");
-	default:
-		return ("Invalid error code");
+		// A non-match of any sub-key implies a non-match of the key.
+		if (pattern->tk_keys[i] != k->tk_keys[i])
+			return (0);
 	}
+
+	return (1);
 }
+
+/** Copy new entries from @a source into @a dest. */
+static inline int32_t
+watchman_key_union(watchman_key *dest, const watchman_key *source)
+{
+	for (uint32_t i = 0; i < WATCHMAN_KEY_SIZE; i++) {
+		if (IS_SET(source->tk_mask, i)) {
+			if (IS_SET(dest->tk_mask, i)) {
+			    if (dest->tk_keys[i] != source->tk_keys[i])
+				return (WATCHMAN_ERROR_EINVAL);
+			} else {
+				dest->tk_keys[i] = source->tk_keys[i];
+			}
+		}
+	}
+
+	dest->tk_mask |= source->tk_mask;
+	return (WATCHMAN_SUCCESS);
+}
+

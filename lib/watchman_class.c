@@ -32,11 +32,11 @@
  * $Id$
  */
 
-#include "tesla_internal.h"
-#include "tesla_key.h"
+#include "watchman_internal.h"
+#include "watchman_key.h"
 
 #ifdef _KERNEL
-MALLOC_DEFINE(M_TESLA, "tesla", "TESLA internal state");
+MALLOC_DEFINE(M_WATCHMAN, "watchman", "WATCHMAN internal state");
 #else
 #include <inttypes.h>
 #include <stdio.h>
@@ -44,13 +44,13 @@ MALLOC_DEFINE(M_TESLA, "tesla", "TESLA internal state");
 
 
 int
-tesla_class_init(struct tesla_class *tclass, enum tesla_context context,
+watchman_class_init(struct watchman_class *tclass, enum watchman_context context,
 	uint32_t instances)
 {
 	assert(tclass != NULL);
 	assert(context >= 0);
 	assert(instances > 0);
-	// TODO: write a TESLA assertion about locking here.
+	// TODO: write a WATCHMAN assertion about locking here.
 
 	tclass->tc_limit = instances;
 
@@ -58,41 +58,41 @@ tesla_class_init(struct tesla_class *tclass, enum tesla_context context,
 	tclass->tc_limit = instances;
 	tclass->tc_free = instances;
 	tclass->tc_instances =
-		tesla_malloc(instances * sizeof(tclass->tc_instances[0]));
+		watchman_malloc(instances * sizeof(tclass->tc_instances[0]));
 
 	switch (context) {
-	case TESLA_CONTEXT_GLOBAL:
-		return tesla_class_global_postinit(tclass);
+	case WATCHMAN_CONTEXT_GLOBAL:
+		return watchman_class_global_postinit(tclass);
 
-	case TESLA_CONTEXT_THREAD:
-		return tesla_class_perthread_postinit(tclass);
+	case WATCHMAN_CONTEXT_THREAD:
+		return watchman_class_perthread_postinit(tclass);
 
 	default:
-		assert(0 && "unhandled TESLA context");
-		return (TESLA_ERROR_UNKNOWN);
+		assert(0 && "unhandled WATCHMAN context");
+		return (WATCHMAN_ERROR_UNKNOWN);
 	}
 }
 
 
 void
-tesla_class_destroy(struct tesla_class *class)
+watchman_class_destroy(struct watchman_class *class)
 {
-	tesla_free(class->tc_instances);
+	watchman_free(class->tc_instances);
 	switch (class->tc_context) {
-	case TESLA_CONTEXT_GLOBAL:
-		tesla_class_global_destroy(class);
+	case WATCHMAN_CONTEXT_GLOBAL:
+		watchman_class_global_destroy(class);
 		break;
 
-	case TESLA_CONTEXT_THREAD:
-		tesla_class_perthread_destroy(class);
+	case WATCHMAN_CONTEXT_THREAD:
+		watchman_class_perthread_destroy(class);
 		break;
 	}
 }
 
 
 int
-tesla_match(struct tesla_class *tclass, const struct tesla_key *pattern,
-	    struct tesla_instance **array, uint32_t *size)
+watchman_match(struct watchman_class *tclass, const struct watchman_key *pattern,
+	    struct watchman_instance **array, uint32_t *size)
 {
 	assert(tclass != NULL);
 	assert(pattern != NULL);
@@ -102,28 +102,28 @@ tesla_match(struct tesla_class *tclass, const struct tesla_key *pattern,
 	// Assume that any and every instance could match.
 	if (*size < tclass->tc_limit) {
 		*size = tclass->tc_limit;
-		return (TESLA_ERROR_ENOMEM);
+		return (WATCHMAN_ERROR_ENOMEM);
 	}
 
 	// Copy matches into the array.
 	*size = 0;
 	for (uint32_t i = 0; i < tclass->tc_limit; i++) {
-		struct tesla_instance *inst = tclass->tc_instances + i;
-		if (tesla_instance_active(inst)
-		    && tesla_key_matches(pattern, &inst->ti_key)) {
+		struct watchman_instance *inst = tclass->tc_instances + i;
+		if (watchman_instance_active(inst)
+		    && watchman_key_matches(pattern, &inst->ti_key)) {
 			array[*size] = inst;
 			*size += 1;
 		}
 	}
 
-	return (TESLA_SUCCESS);
+	return (WATCHMAN_SUCCESS);
 }
 
 
 
 int32_t
-tesla_instance_new(struct tesla_class *tclass, const struct tesla_key *name,
-	uint32_t state, struct tesla_instance **out)
+watchman_instance_new(struct watchman_class *tclass, const struct watchman_key *name,
+	uint32_t state, struct watchman_instance **out)
 {
 	assert(tclass != NULL);
 	assert(name != NULL);
@@ -131,14 +131,14 @@ tesla_instance_new(struct tesla_class *tclass, const struct tesla_key *name,
 
 	// A new instance must not look inactive.
 	if ((state == 0) && (name->tk_mask == 0))
-		return (TESLA_ERROR_EINVAL);
+		return (WATCHMAN_ERROR_EINVAL);
 
 	if (tclass->tc_free == 0)
-		return (TESLA_ERROR_ENOMEM);
+		return (WATCHMAN_ERROR_ENOMEM);
 
 	for (uint32_t i = 0; i < tclass->tc_limit; i++) {
-		struct tesla_instance *inst = tclass->tc_instances + i;
-		if (tesla_instance_active(inst))
+		struct watchman_instance *inst = tclass->tc_instances + i;
+		if (watchman_instance_active(inst))
 			continue;
 
 		// Initialise the new instance.
@@ -148,48 +148,48 @@ tesla_instance_new(struct tesla_class *tclass, const struct tesla_key *name,
 		tclass->tc_free--;
 		*out = inst;
 
-		return (TESLA_SUCCESS);
+		return (WATCHMAN_SUCCESS);
 	}
 
-	tesla_assert(0, ("no free instances but tc_free was > 0"));
-	return (TESLA_ERROR_ENOMEM);
+	watchman_assert(0, ("no free instances but tc_free was > 0"));
+	return (WATCHMAN_ERROR_ENOMEM);
 }
 
 int
-tesla_instance_clone(struct tesla_class *tclass,
-	const struct tesla_instance *orig, struct tesla_instance **copy)
+watchman_instance_clone(struct watchman_class *tclass,
+	const struct watchman_instance *orig, struct watchman_instance **copy)
 {
-	return tesla_instance_new(tclass, &orig->ti_key, orig->ti_state, copy);
+	return watchman_instance_new(tclass, &orig->ti_key, orig->ti_state, copy);
 }
 
 void
-tesla_instance_clear(struct tesla_instance *tip)
+watchman_instance_clear(struct watchman_instance *tip)
 {
 
 	bzero(tip, sizeof(*tip));
-	assert(!tesla_instance_active(tip));
+	assert(!watchman_instance_active(tip));
 }
 
 void
-tesla_class_put(struct tesla_class *tsp)
+watchman_class_put(struct watchman_class *tsp)
 {
 	switch (tsp->tc_context) {
-	case TESLA_CONTEXT_GLOBAL:
-		return tesla_class_global_release(tsp);
+	case WATCHMAN_CONTEXT_GLOBAL:
+		return watchman_class_global_release(tsp);
 
-	case TESLA_CONTEXT_THREAD:
-		return tesla_class_perthread_release(tsp);
+	case WATCHMAN_CONTEXT_THREAD:
+		return watchman_class_perthread_release(tsp);
 
 	default:
-		assert(0 && "unhandled TESLA context");
+		assert(0 && "unhandled WATCHMAN context");
 	}
 }
 
 void
-tesla_class_reset(struct tesla_class *c)
+watchman_class_reset(struct watchman_class *c)
 {
 
-	DEBUG(libtesla.class.reset, "tesla_class_reset %s\n",
+	DEBUG(libwatchman.class.reset, "watchman_class_reset %s\n",
 	      c->tc_automaton->ta_name);
 
 	bzero(c->tc_instances, sizeof(c->tc_instances[0]) * c->tc_limit);

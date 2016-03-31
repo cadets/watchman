@@ -7,11 +7,11 @@
 #endif
 
 #define check(op) do { \
-	int tesla_error = op; \
-	if (tesla_error != TESLA_SUCCESS) { \
+	int watchman_error = op; \
+	if (watchman_error != WATCHMAN_SUCCESS) { \
 		print_backtrace(); \
 		errx(1, "error at %s:%i in " #op ": %s", \
-		     __FILE__, __LINE__, tesla_strerror(tesla_error)); \
+		     __FILE__, __LINE__, watchman_strerror(watchman_error)); \
 	} \
 } while(0)
 

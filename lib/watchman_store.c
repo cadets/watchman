@@ -1,4 +1,4 @@
-/** @file tesla_store.c  Implementation of @ref tesla_store. */
+/** @file watchman_store.c  Implementation of @ref watchman_store. */
 /*-
  * Copyright (c) 2012 Jonathan Anderson
  * Copyright (c) 2011, 2013 Robert N. M. Watson
@@ -33,54 +33,54 @@
  * $Id$
  */
 
-#include "tesla_internal.h"
+#include "watchman_internal.h"
 
 #ifndef _KERNEL
 #include <errno.h>
 
-/** The pthreads key used to identify TESLA data. */
+/** The pthreads key used to identify WATCHMAN data. */
 pthread_key_t	pthread_key(void);
-void		tesla_pthread_destructor(void*);
+void		watchman_pthread_destructor(void*);
 #endif
 
-static struct tesla_store global_store = { .ts_length = 0 };
+static struct watchman_store global_store = { .ts_length = 0 };
 
-static void	tesla_class_acquire(tesla_class*);
+static void	watchman_class_acquire(watchman_class*);
 
 #ifdef _KERNEL
 static void
-tesla_global_store_sysinit(__unused void *arg)
+watchman_global_store_sysinit(__unused void *arg)
 {
 	uint32_t error;
 
-	error = tesla_store_init(&global_store, TESLA_CONTEXT_GLOBAL,
-	    TESLA_MAX_CLASSES, TESLA_MAX_INSTANCES);
-	tesla_assert(error == TESLA_SUCCESS, ("tesla_store_init failed"));
+	error = watchman_store_init(&global_store, WATCHMAN_CONTEXT_GLOBAL,
+	    WATCHMAN_MAX_CLASSES, WATCHMAN_MAX_INSTANCES);
+	watchman_assert(error == WATCHMAN_SUCCESS, ("watchman_store_init failed"));
 }
-SYSINIT(tesla_global_store, SI_SUB_TESLA, SI_ORDER_FIRST,
-    tesla_global_store_sysinit, NULL);
+SYSINIT(watchman_global_store, SI_SUB_WATCHMAN, SI_ORDER_FIRST,
+    watchman_global_store_sysinit, NULL);
 #endif
 
 #ifndef _KERNEL
-static __thread tesla_store *cache = NULL;
+static __thread watchman_store *cache = NULL;
 #endif
 
 int32_t
-tesla_store_get(enum tesla_context context, uint32_t classes,
-	uint32_t instances, tesla_store* *storep)
+watchman_store_get(enum watchman_context context, uint32_t classes,
+	uint32_t instances, watchman_store* *storep)
 {
 	assert(storep);
 
-	tesla_store *store;
+	watchman_store *store;
 
 	switch (context) {
-	case TESLA_CONTEXT_GLOBAL:
+	case WATCHMAN_CONTEXT_GLOBAL:
 		store = &global_store;
 		break;
 
-	case TESLA_CONTEXT_THREAD: {
+	case WATCHMAN_CONTEXT_THREAD: {
 #ifdef _KERNEL
-		store = curthread->td_tesla;
+		store = curthread->td_watchman;
 #else
 		pthread_key_t key;
 		if (!cache) {
@@ -92,9 +92,9 @@ tesla_store_get(enum tesla_context context, uint32_t classes,
 
 		// Create a new store if we don't already have one.
 		if (store == NULL) {
-			store = tesla_malloc(sizeof(tesla_store));
+			store = watchman_malloc(sizeof(watchman_store));
 #ifdef _KERNEL
-			curthread->td_tesla = store;
+			curthread->td_watchman = store;
 #else
 			__debug int err = pthread_setspecific(key, store);
 			assert(err == 0);
@@ -104,42 +104,42 @@ tesla_store_get(enum tesla_context context, uint32_t classes,
 	}
 
 	default:
-		return (TESLA_ERROR_EINVAL);
+		return (WATCHMAN_ERROR_EINVAL);
 	}
 
 	if (store->ts_length == 0) {
 		int32_t error =
-			tesla_store_init(store, context, classes, instances);
+			watchman_store_init(store, context, classes, instances);
 
-		if (error != TESLA_SUCCESS) return (error);
+		if (error != WATCHMAN_SUCCESS) return (error);
 
 		assert(store->ts_classes != NULL);
 	}
 
 	*storep = store;
-	return (TESLA_SUCCESS);
+	return (WATCHMAN_SUCCESS);
 }
 
 
 int32_t
-tesla_store_init(tesla_store *store, enum tesla_context context,
+watchman_store_init(watchman_store *store, enum watchman_context context,
                  uint32_t classes, uint32_t instances)
 {
 	assert(classes > 0);
 	assert(instances > 0);
 
 	store->ts_length = classes;
-	store->ts_classes = tesla_malloc(classes * sizeof(tesla_class));
+	store->ts_classes = watchman_malloc(classes * sizeof(watchman_class));
 	if (store->ts_classes == NULL)
-		return (TESLA_ERROR_ENOMEM);
+		return (WATCHMAN_ERROR_ENOMEM);
 
-	int error = TESLA_SUCCESS;
+	int error = WATCHMAN_SUCCESS;
 	for (uint32_t i = 0; i < classes; i++) {
-		error = tesla_class_init(store->ts_classes + i,
+		error = watchman_class_init(store->ts_classes + i,
 		                         context, instances);
 
-		assert(error == TESLA_SUCCESS);
-		if (error != TESLA_SUCCESS)
+		assert(error == WATCHMAN_SUCCESS);
+		if (error != WATCHMAN_SUCCESS)
 			break;
 
 		assert(store->ts_classes[i].tc_context >= 0);
@@ -152,7 +152,7 @@ tesla_store_init(tesla_store *store, enum tesla_context context,
 	 * TODO(JA): perhaps allocate fewer of these?
 	 */
 	const size_t lifetime_size = classes * sizeof(store->ts_lifetimes[0]);
-	store->ts_lifetimes = tesla_malloc(lifetime_size);
+	store->ts_lifetimes = watchman_malloc(lifetime_size);
 	bzero(store->ts_lifetimes, lifetime_size);
 
 	store->ts_lifetime_count = 0;
@@ -162,32 +162,32 @@ tesla_store_init(tesla_store *store, enum tesla_context context,
 
 
 void
-tesla_store_free(tesla_store *store)
+watchman_store_free(watchman_store *store)
 {
-	DEBUG(libtesla.store.free, "tesla_store_free %tx\n", store);
+	DEBUG(libwatchman.store.free, "watchman_store_free %tx\n", store);
 
 	for (uint32_t i = 0; i < store->ts_length; i++)
-		tesla_class_destroy(store->ts_classes + i);
+		watchman_class_destroy(store->ts_classes + i);
 
-	tesla_free(store->ts_lifetimes);
-	tesla_free(store);
+	watchman_free(store->ts_lifetimes);
+	watchman_free(store);
 }
 
 
 void
-tesla_store_reset(struct tesla_store *store)
+watchman_store_reset(struct watchman_store *store)
 {
-	DEBUG(libtesla.store.reset, "tesla_store_reset %tx\n", store);
+	DEBUG(libwatchman.store.reset, "watchman_store_reset %tx\n", store);
 
 	for (uint32_t i = 0; i < store->ts_length; i++)
-		tesla_class_reset(store->ts_classes + i);
+		watchman_class_reset(store->ts_classes + i);
 }
 
 
 int32_t
-tesla_class_get(struct tesla_store *store,
-                const struct tesla_automaton *description,
-                struct tesla_class **tclassp)
+watchman_class_get(struct watchman_store *store,
+                const struct watchman_automaton *description,
+                struct watchman_class **tclassp)
 {
 	assert(store != NULL);
 	assert(description != NULL);
@@ -198,9 +198,9 @@ tesla_class_get(struct tesla_store *store,
 
 	// Find the class: start at the bucket indicated by the hash but
 	// walk around the array if there is a collision.
-	tesla_class *tclass = NULL;
+	watchman_class *tclass = NULL;
 	for (uint32_t i = 0; i < len; i++) {
-		tesla_class *t = store->ts_classes + ((desc_hash + i) % len);
+		watchman_class *t = store->ts_classes + ((desc_hash + i) % len);
 		assert(t != NULL);
 
 		// If the bucket is empty, the class doesn't exist in the
@@ -222,28 +222,28 @@ tesla_class_get(struct tesla_store *store,
 	}
 
 	if (tclass == NULL)
-		return (TESLA_ERROR_ENOENT);
+		return (WATCHMAN_ERROR_ENOENT);
 
 	assert(tclass->tc_instances != NULL);
 	assert(tclass->tc_context >= 0);
 
-	tesla_class_acquire(tclass);
+	watchman_class_acquire(tclass);
 
 	*tclassp = tclass;
-	return (TESLA_SUCCESS);
+	return (WATCHMAN_SUCCESS);
 }
 
 void
-tesla_class_acquire(tesla_class *class) {
+watchman_class_acquire(watchman_class *class) {
 	switch (class->tc_context) {
-	case TESLA_CONTEXT_GLOBAL:
-		return tesla_class_global_acquire(class);
+	case WATCHMAN_CONTEXT_GLOBAL:
+		return watchman_class_global_acquire(class);
 
-	case TESLA_CONTEXT_THREAD:
-		return tesla_class_perthread_acquire(class);
+	case WATCHMAN_CONTEXT_THREAD:
+		return watchman_class_perthread_acquire(class);
 
 	default:
-		assert(0 && "unhandled TESLA context");
+		assert(0 && "unhandled WATCHMAN context");
 	}
 }
 
@@ -268,7 +268,7 @@ pthread_key()
 	// initialise the key twice.
 	if (key_initialised) return key;
 
-	error = pthread_key_create(&key, tesla_pthread_destructor);
+	error = pthread_key_create(&key, watchman_pthread_destructor);
 	assert(error == 0 && "failed to create pthread_key_t");
 
 	key_initialised = 1;
@@ -280,10 +280,10 @@ pthread_key()
 }
 
 void
-tesla_pthread_destructor(__unused void *x)
+watchman_pthread_destructor(__unused void *x)
 {
-	tesla_store *store = (tesla_store*) x;
-	tesla_store_free(store);
+	watchman_store *store = (watchman_store*) x;
+	watchman_store_free(store);
 }
 #endif
 

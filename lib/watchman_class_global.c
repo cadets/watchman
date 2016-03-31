@@ -31,41 +31,41 @@
  * $Id$
  */
 
-#include "tesla_internal.h"
+#include "watchman_internal.h"
 
-static void	tesla_class_global_lock_init(struct tesla_class *tsp);
-static void	tesla_class_global_lock_destroy(struct tesla_class *tsp);
+static void	watchman_class_global_lock_init(struct watchman_class *tsp);
+static void	watchman_class_global_lock_destroy(struct watchman_class *tsp);
 
 int
-tesla_class_global_postinit(struct tesla_class *tsp)
+watchman_class_global_postinit(struct watchman_class *tsp)
 {
 
-	assert(tsp->tc_context == TESLA_CONTEXT_GLOBAL);
-	tesla_class_global_lock_init(tsp);
-	return (TESLA_SUCCESS);
+	assert(tsp->tc_context == WATCHMAN_CONTEXT_GLOBAL);
+	watchman_class_global_lock_init(tsp);
+	return (WATCHMAN_SUCCESS);
 }
 
 void
-tesla_class_global_acquire(struct tesla_class *tsp)
+watchman_class_global_acquire(struct watchman_class *tsp)
 {
 
-	assert(tsp->tc_context == TESLA_CONTEXT_GLOBAL);
-	tesla_lock(&tsp->tc_lock);
+	assert(tsp->tc_context == WATCHMAN_CONTEXT_GLOBAL);
+	watchman_lock(&tsp->tc_lock);
 }
 
 void
-tesla_class_global_release(struct tesla_class *tsp)
+watchman_class_global_release(struct watchman_class *tsp)
 {
 
-	assert(tsp->tc_context == TESLA_CONTEXT_GLOBAL);
-	tesla_unlock(&tsp->tc_lock);
+	assert(tsp->tc_context == WATCHMAN_CONTEXT_GLOBAL);
+	watchman_unlock(&tsp->tc_lock);
 }
 
 void
-tesla_class_global_destroy(struct tesla_class *tsp)
+watchman_class_global_destroy(struct watchman_class *tsp)
 {
 
-	tesla_class_global_lock_destroy(tsp);
+	watchman_class_global_lock_destroy(tsp);
 }
 
 
@@ -77,11 +77,11 @@ tesla_class_global_destroy(struct tesla_class *tsp)
  * investigation required.
  */
 void
-tesla_class_global_lock_init(struct tesla_class *tsp)
+watchman_class_global_lock_init(struct watchman_class *tsp)
 {
 
 #ifdef _KERNEL
-	mtx_init(&tsp->tc_lock, "tesla", NULL, MTX_DEF);
+	mtx_init(&tsp->tc_lock, "watchman", NULL, MTX_DEF);
 #else
 	__debug int error = pthread_mutex_init(&tsp->tc_lock, NULL);
 	assert(error == 0);
@@ -89,7 +89,7 @@ tesla_class_global_lock_init(struct tesla_class *tsp)
 }
 
 void
-tesla_class_global_lock_destroy(struct tesla_class *tsp)
+watchman_class_global_lock_destroy(struct watchman_class *tsp)
 {
 
 #ifdef _KERNEL

@@ -1,5 +1,6 @@
 /*-
- * Copyright (c) 2013 Jonathan Anderson
+ * Copyright (c) 2011 Robert N. M. Watson
+ * Copyright (c) 2012-2013 Jonathan Anderson
  * All rights reserved.
  *
  * This software was developed by SRI International and the University of
@@ -30,62 +31,33 @@
  * $Id$
  */
 
-#include "tesla_internal.h"
-
-#ifndef _KERNEL
-#include <inttypes.h>
-#include <stdio.h>
-#endif
+#include "watchman_internal.h"
 
 
-#define	IS_SET(mask, index) (mask & (1 << index))
-
-/**
- * Check to see if a key matches a pattern.
- *
- * @returns  1 if @a k matches @a pattern, 0 otherwise
- */
-static inline int
-tesla_key_matches(const struct tesla_key *pattern, const struct tesla_key *k)
+void
+watchman_die(int32_t code, const char *event)
 {
-	assert(pattern != NULL);
-	assert(k != NULL);
 
-	// The pattern's mask must be a subset of the target's (ANY matches
-	// 42 but not the other way around).
-	if (!SUBSET(pattern->tk_mask | pattern->tk_freemask, k->tk_mask))
-		return (0);
-
-	for (uint32_t i = 0; i < TESLA_KEY_SIZE; i++) {
-		// Only check keys specified by the bitmasks.
-		uint32_t mask = (1 << i);
-		if ((pattern->tk_mask & mask) != mask)
-			continue;
-
-		// A non-match of any sub-key implies a non-match of the key.
-		if (pattern->tk_keys[i] != k->tk_keys[i])
-			return (0);
-	}
-
-	return (1);
+	watchman_panic("watchman_die: fatal error in event '%s'; %s\n",
+		event, watchman_strerror(code));
 }
 
-/** Copy new entries from @a source into @a dest. */
-static inline int32_t
-tesla_key_union(tesla_key *dest, const tesla_key *source)
+const char *
+watchman_strerror(int error)
 {
-	for (uint32_t i = 0; i < TESLA_KEY_SIZE; i++) {
-		if (IS_SET(source->tk_mask, i)) {
-			if (IS_SET(dest->tk_mask, i)) {
-			    if (dest->tk_keys[i] != source->tk_keys[i])
-				return (TESLA_ERROR_EINVAL);
-			} else {
-				dest->tk_keys[i] = source->tk_keys[i];
-			}
-		}
+
+	switch (error) {
+	case WATCHMAN_SUCCESS:
+		return ("Success");
+	case WATCHMAN_ERROR_ENOENT:
+		return ("Entry not found");
+	case WATCHMAN_ERROR_ENOMEM:
+		return ("Insufficient memory");
+	case WATCHMAN_ERROR_EINVAL:
+		return ("Invalid argument");
+	case WATCHMAN_ERROR_UNKNOWN:
+		return ("Unknown error");
+	default:
+		return ("Invalid error code");
 	}
-
-	dest->tk_mask |= source->tk_mask;
-	return (TESLA_SUCCESS);
 }
-

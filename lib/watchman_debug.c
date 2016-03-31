@@ -1,4 +1,4 @@
-/** @file  tesla_debug.c    Debugging helpers for TESLA state. */
+/** @file  watchman_debug.c    Debugging helpers for WATCHMAN state. */
 /*-
  * Copyright (c) 2012-2013 Jonathan Anderson
  * All rights reserved.
@@ -31,8 +31,8 @@
  * $Id$
  */
 
-#include "tesla_internal.h"
-#include "tesla_strnlen.h"
+#include "watchman_internal.h"
+#include "watchman_strnlen.h"
 
 #ifndef _KERNEL
 #include <fnmatch.h>
@@ -41,9 +41,9 @@
 #endif
 
 void
-print_transition(__debug const char *debug, const struct tesla_transition *t)
+print_transition(__debug const char *debug, const struct watchman_transition *t)
 {
-	if (!tesla_debugging(debug))
+	if (!watchman_debugging(debug))
 		return;
 
 	char buffer[1024];
@@ -54,7 +54,7 @@ print_transition(__debug const char *debug, const struct tesla_transition *t)
 }
 
 char*
-sprint_transition(char *buf, const char *end, const struct tesla_transition *t)
+sprint_transition(char *buf, const char *end, const struct watchman_transition *t)
 {
 	char *c = buf;
 
@@ -67,10 +67,10 @@ sprint_transition(char *buf, const char *end, const struct tesla_transition *t)
 	SAFE_SPRINTF(c, end, " -> %d:", t->to);
 	SAFE_SPRINTF(c, end, "0x%tx", t->to_mask);
 
-	if (t->flags & TESLA_TRANS_INIT)
+	if (t->flags & WATCHMAN_TRANS_INIT)
 		SAFE_SPRINTF(c, end, " <init>");
 
-	if (t->flags & TESLA_TRANS_CLEANUP)
+	if (t->flags & WATCHMAN_TRANS_CLEANUP)
 		SAFE_SPRINTF(c, end, " <clean>");
 
 	SAFE_SPRINTF(c, end, ") ");
@@ -80,9 +80,9 @@ sprint_transition(char *buf, const char *end, const struct tesla_transition *t)
 
 void
 print_transitions(__debug const char *debug,
-	const struct tesla_transitions *transp)
+	const struct watchman_transitions *transp)
 {
-	if (!tesla_debugging(debug))
+	if (!watchman_debugging(debug))
 		return;
 
 	char buffer[1024];
@@ -94,7 +94,7 @@ print_transitions(__debug const char *debug,
 
 char*
 sprint_transitions(char *buffer, const char *end,
-    const struct tesla_transitions *tp)
+    const struct watchman_transitions *tp)
 {
 	char *c = buffer;
 
@@ -109,13 +109,13 @@ sprint_transitions(char *buffer, const char *end,
 }
 
 char*
-key_string(char *buffer, const char *end, const struct tesla_key *key)
+key_string(char *buffer, const char *end, const struct watchman_key *key)
 {
 	char *c = buffer;
 
 	SAFE_SPRINTF(c, end, "0x%tx [ ", key->tk_mask);
 
-	for (int32_t i = 0; i < TESLA_KEY_SIZE; i++) {
+	for (int32_t i = 0; i < WATCHMAN_KEY_SIZE; i++) {
 		if (key->tk_mask & (1 << i))
 			SAFE_SPRINTF(c, end, "%tx ", key->tk_keys[i]);
 		else
@@ -129,18 +129,18 @@ key_string(char *buffer, const char *end, const struct tesla_key *key)
 
 
 int32_t
-tesla_debugging(const char *name)
+watchman_debugging(const char *name)
 {
 #ifdef NDEBUG
 	return 0;
 #endif
 #ifdef _KERNEL
 	/*
-	 * In the kernel, only print 'libtesla.{event,instance}*' output.
+	 * In the kernel, only print 'libwatchman.{event,instance}*' output.
 	 */
 	static const char* allowed[] = {
-		"libtesla.event",
-		"libtesla.instance",
+		"libwatchman.event",
+		"libwatchman.instance",
 		NULL,
 	};
 	const size_t len = sizeof(allowed) / sizeof(allowed[0]);
@@ -172,16 +172,16 @@ tesla_debugging(const char *name)
 	static const char *env = (char*)-1;
 	if (env == (char*)-1)
 	{
-		env = getenv("TESLA_DEBUG");
+		env = getenv("WATCHMAN_DEBUG");
 		if (env != 0 && *env == '\0')
 			env = 0;
 	}
 
-	/* If TESLA_DEBUG is not set, we're definitely not debugging. */
+	/* If WATCHMAN_DEBUG is not set, we're definitely not debugging. */
 	if (env == NULL)
 		return 0;
 
-	/* Allow e.g. 'libtesla' to match 'libtesla.foo'. */
+	/* Allow e.g. 'libwatchman' to match 'libwatchman.foo'. */
 	size_t envlen = strnlen(env, 100);
 	if ((strncmp(env, name, envlen) == 0) && (name[envlen] == '.'))
 		return 1;
@@ -193,7 +193,7 @@ tesla_debugging(const char *name)
 
 #ifndef NDEBUG
 void
-assert_instanceof(struct tesla_instance *instance, struct tesla_class *tclass)
+assert_instanceof(struct watchman_instance *instance, struct watchman_class *tclass)
 {
 	assert(instance != NULL);
 	assert(tclass != NULL);
@@ -206,8 +206,8 @@ assert_instanceof(struct tesla_instance *instance, struct tesla_class *tclass)
 		}
 	}
 
-	tesla_assert(instance_belongs_to_class,
-		("tesla_instance %x not of class '%s'",
+	watchman_assert(instance_belongs_to_class,
+		("watchman_instance %x not of class '%s'",
 		 instance, tclass->tc_automaton->ta_name)
 	       );
 }
@@ -215,28 +215,28 @@ assert_instanceof(struct tesla_instance *instance, struct tesla_class *tclass)
 #endif
 
 void
-print_class(const struct tesla_class *c)
+print_class(const struct watchman_class *c)
 {
-	static const char *DEBUG_NAME = "libtesla.class.state";
-	if (!tesla_debugging(DEBUG_NAME))
+	static const char *DEBUG_NAME = "libwatchman.class.state";
+	if (!watchman_debugging(DEBUG_NAME))
 		return;
 
 	print("----\n");
-	print("struct tesla_class @ 0x%tx {\n", (intptr_t) c);
+	print("struct watchman_class @ 0x%tx {\n", (intptr_t) c);
 	print("  name:         '%s',\n", c->tc_automaton->ta_name);
 	print("  description:  '[...]',\n");   // TL;DR
 	print("  scope:        ");
 	switch (c->tc_context) {
-		case TESLA_CONTEXT_THREAD:  print("thread-local\n"); break;
-		case TESLA_CONTEXT_GLOBAL:  print("global\n");       break;
+		case WATCHMAN_CONTEXT_THREAD:  print("thread-local\n"); break;
+		case WATCHMAN_CONTEXT_GLOBAL:  print("global\n");       break;
 		default:
 			print("UNKNOWN (0x%x)\n", c->tc_context);
 	}
 	print("  limit:        %d\n", c->tc_limit);
 	print("  %d/%d instances\n", c->tc_limit - c->tc_free, c->tc_limit);
 	for (uint32_t i = 0; i < c->tc_limit; i++) {
-		const struct tesla_instance *inst = c->tc_instances + i;
-		if (!tesla_instance_active(inst))
+		const struct watchman_instance *inst = c->tc_instances + i;
+		if (!watchman_instance_active(inst))
 			continue;
 
 		print("    %2u: state %d, ", i, inst->ti_state);
@@ -248,12 +248,12 @@ print_class(const struct tesla_class *c)
 }
 
 void
-print_key(__debug const char *debug_name, const struct tesla_key *key)
+print_key(__debug const char *debug_name, const struct watchman_key *key)
 {
-	if (!tesla_debugging(debug_name))
+	if (!watchman_debugging(debug_name))
 		return;
 
-	static const size_t LEN = 15 * TESLA_KEY_SIZE + 10;
+	static const size_t LEN = 15 * WATCHMAN_KEY_SIZE + 10;
 	char buffer[LEN];
 	char *end = buffer + LEN;
 

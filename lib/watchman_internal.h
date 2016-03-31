@@ -30,8 +30,8 @@
  * $Id$
  */
 
-#ifndef TESLA_INTERNAL_H
-#define	TESLA_INTERNAL_H
+#ifndef WATCHMAN_INTERNAL_H
+#define	WATCHMAN_INTERNAL_H
 
 #include <sys/cdefs.h>
 
@@ -82,17 +82,17 @@ __BEGIN_DECLS
 
 
 /**
- * The current runtime state of a TESLA lifetime.
+ * The current runtime state of a WATCHMAN lifetime.
  */
-struct tesla_lifetime_state {
-	struct tesla_lifetime_event	 tls_begin;
-	struct tesla_lifetime_event	 tls_end;
+struct watchman_lifetime_state {
+	struct watchman_lifetime_event	 tls_begin;
+	struct watchman_lifetime_event	 tls_end;
 
 	/** A place to register a few classes that share this lifetime. */
-	struct tesla_class*		 tls_classes[32];
+	struct watchman_class*		 tls_classes[32];
 
 	/** A place to register more classes that share this lifetime. */
-	struct tesla_class*		*tls_dyn_classes;
+	struct watchman_class*		*tls_dyn_classes;
 
 	/** The number of values @ref tls_dyn_classes can hold. */
 	uint32_t			 tls_dyn_capacity;
@@ -104,48 +104,48 @@ struct tesla_lifetime_state {
 /**
  * Call this if things go catastrophically, unrecoverably wrong.
  */
-void	tesla_die(int32_t errnum, const char *event) __attribute__((noreturn));
+void	watchman_die(int32_t errnum, const char *event) __attribute__((noreturn));
 
 /**
  * Reset all automata in a store to the inactive state.
  */
-void	tesla_store_reset(struct tesla_store *store);
+void	watchman_store_reset(struct watchman_store *store);
 
 /**
- * Clean up a @ref tesla_store.
+ * Clean up a @ref watchman_store.
  */
-void	tesla_store_free(struct tesla_store*);
+void	watchman_store_free(struct watchman_store*);
 
 
 /**
- * Reset a @ref tesla_class for re-use from a clean state.
+ * Reset a @ref watchman_class for re-use from a clean state.
  */
-void	tesla_class_reset(struct tesla_class*);
+void	watchman_class_reset(struct watchman_class*);
 
 /**
- * Clean up a @ref tesla_class.
+ * Clean up a @ref watchman_class.
  */
-void	tesla_class_destroy(struct tesla_class*);
+void	watchman_class_destroy(struct watchman_class*);
 
 
 /**
- * Create a new @ref tesla_instance.
+ * Create a new @ref watchman_instance.
  *
  * The caller is responsible for locking the class if needed.
  */
-int32_t	tesla_instance_new(struct tesla_class *tclass,
-	    const struct tesla_key *name, uint32_t state,
-	    struct tesla_instance **out);
+int32_t	watchman_instance_new(struct watchman_class *tclass,
+	    const struct watchman_key *name, uint32_t state,
+	    struct watchman_instance **out);
 
 /**
- * Checks whether or not a TESLA automata instance is active (in use).
+ * Checks whether or not a WATCHMAN automata instance is active (in use).
  *
- * @param  i    pointer to a <b>valid</b> @ref tesla_instance
+ * @param  i    pointer to a <b>valid</b> @ref watchman_instance
  *
  * @returns     1 if active, 0 if inactive
  */
 static inline int32_t
-tesla_instance_active(const struct tesla_instance *i)
+watchman_instance_active(const struct watchman_instance *i)
 {
 	assert(i != NULL);
 
@@ -153,7 +153,7 @@ tesla_instance_active(const struct tesla_instance *i)
 }
 
 static inline bool
-same_lifetime(const struct tesla_lifetime *x, const struct tesla_lifetime *y)
+same_lifetime(const struct watchman_lifetime *x, const struct watchman_lifetime *y)
 {
 	assert(x != NULL);
 	assert(y != NULL);
@@ -170,12 +170,12 @@ same_lifetime(const struct tesla_lifetime *x, const struct tesla_lifetime *y)
 }
 
 /**
- * Compare the static parts of a @ref tesla_lifetime_state with a
- * @ref tesla_lifetime.
+ * Compare the static parts of a @ref watchman_lifetime_state with a
+ * @ref watchman_lifetime.
  */
 static inline bool
-same_static_lifetime(const struct tesla_lifetime *x,
-	const struct tesla_lifetime_state *y)
+same_static_lifetime(const struct watchman_lifetime *x,
+	const struct watchman_lifetime_state *y)
 {
 	assert(x != NULL);
 	assert(y != NULL);
@@ -193,11 +193,11 @@ same_static_lifetime(const struct tesla_lifetime *x,
 
 
 /** Clone an existing instance into a new instance. */
-int32_t	tesla_instance_clone(struct tesla_class *tclass,
-	    const struct tesla_instance *orig, struct tesla_instance **copy);
+int32_t	watchman_instance_clone(struct watchman_class *tclass,
+	    const struct watchman_instance *orig, struct watchman_instance **copy);
 
 /** Zero an instance for re-use. */
-void	tesla_instance_clear(struct tesla_instance *tip);
+void	watchman_instance_clear(struct watchman_instance *tip);
 
 
 /**
@@ -210,15 +210,15 @@ void	tesla_instance_clear(struct tesla_instance *tip);
  * @param[out]    array    a caller-allocated array to store matches in
  * @param[in,out] size     in: size of array. out: number of instances.
  *
- * @returns    a standard TESLA error code (e.g., TESLA_ERROR_ENOMEM)
+ * @returns    a standard WATCHMAN error code (e.g., WATCHMAN_ERROR_ENOMEM)
  */
-int32_t	tesla_match(struct tesla_class *tclass, const struct tesla_key *key,
-	    struct tesla_instance **array, uint32_t *size);
+int32_t	watchman_match(struct watchman_class *tclass, const struct watchman_key *key,
+	    struct watchman_instance **array, uint32_t *size);
 
 
 
-/** Actions that can be taken by @ref tesla_update_state. */
-enum tesla_action_t {
+/** Actions that can be taken by @ref watchman_update_state. */
+enum watchman_action_t {
 	/** The instance's state should be updated. */
 	UPDATE,
 
@@ -236,14 +236,14 @@ enum tesla_action_t {
 };
 
 /**
- * What is the correct action to perform on a given @ref tesla_instance to
- * satisfy a set of @ref tesla_transitions?
+ * What is the correct action to perform on a given @ref watchman_instance to
+ * satisfy a set of @ref watchman_transitions?
  *
- * @param[out]   trigger    the @ref tesla_transition that triggered the action
+ * @param[out]   trigger    the @ref watchman_transition that triggered the action
  */
-enum tesla_action_t	tesla_action(const struct tesla_instance*,
-	    const struct tesla_key*, const struct tesla_transitions*,
-	    const struct tesla_transition** trigger);
+enum watchman_action_t	watchman_action(const struct watchman_instance*,
+	    const struct watchman_key*, const struct watchman_transitions*,
+	    const struct watchman_transition** trigger);
 
 static __inline uint32_t
 fnv_hash32(uint32_t x)
@@ -269,32 +269,32 @@ fnv_hash64(uint32_t x)
 #ifdef _KERNEL
 
 /** In the kernel, panic really means panic(). */
-#define tesla_panic(...) panic(__VA_ARGS__)
+#define watchman_panic(...) panic(__VA_ARGS__)
 
-/** Our @ref tesla_assert has the same signature as @ref KASSERT. */
-#define tesla_assert(...) KASSERT(__VA_ARGS__)
+/** Our @ref watchman_assert has the same signature as @ref KASSERT. */
+#define watchman_assert(...) KASSERT(__VA_ARGS__)
 
-#define tesla_malloc(len) malloc(len, M_TESLA, M_WAITOK | M_ZERO)
-#define tesla_free(x) free(x, M_TESLA)
+#define watchman_malloc(len) malloc(len, M_WATCHMAN, M_WAITOK | M_ZERO)
+#define watchman_free(x) free(x, M_WATCHMAN)
 
-#define tesla_lock(l) mtx_lock(l)
-#define tesla_unlock(l) mtx_unlock(l)
+#define watchman_lock(l) mtx_lock(l)
+#define watchman_unlock(l) mtx_unlock(l)
 
 #else	/* !_KERNEL */
 
 /** @a errx() is the userspace equivalent of panic(). */
-#define tesla_panic(...) errx(1, __VA_ARGS__)
+#define watchman_panic(...) errx(1, __VA_ARGS__)
 
 /** POSIX @a assert() doesn't let us provide an error message. */
-#define tesla_assert(condition, ...) assert(condition)
+#define watchman_assert(condition, ...) assert(condition)
 
-#define tesla_malloc(len) calloc(1, len)
-#define tesla_free(x) free(x)
+#define watchman_malloc(len) calloc(1, len)
+#define watchman_free(x) free(x)
 
-#define tesla_lock(l) \
+#define watchman_lock(l) \
 	do { __debug int err = pthread_mutex_lock(l); assert(err == 0); } while(0)
 
-#define tesla_unlock(l) \
+#define watchman_unlock(l) \
 	do { __debug int err = pthread_mutex_unlock(l); assert(err == 0); } while(0)
 
 #endif
@@ -304,16 +304,16 @@ fnv_hash64(uint32_t x)
  * Assertion state definition is internal to watchman so we can change it as
  * we need to.
  */
-struct tesla_class {
+struct watchman_class {
 	/**
 	 * Static automaton description.
 	 */
-	const struct tesla_automaton *tc_automaton;
-	enum tesla_context	 tc_context;	/* Global, thread... */
+	const struct watchman_automaton *tc_automaton;
+	enum watchman_context	 tc_context;	/* Global, thread... */
 
 	uint32_t		 tc_limit;	/* Maximum instances. */
 	uint32_t		 tc_free;	/* Unused instances. */
-	struct tesla_instance	*tc_instances;	/* Instances of this class. */
+	struct watchman_instance	*tc_instances;	/* Instances of this class. */
 
 #ifdef _KERNEL
 	struct mtx		 tc_lock;	/* Synchronise tc_table. */
@@ -323,29 +323,29 @@ struct tesla_class {
 };
 
 
-typedef struct tesla_automaton		tesla_automaton;
-typedef struct tesla_class		tesla_class;
-typedef struct tesla_instance		tesla_instance;
-typedef struct tesla_key		tesla_key;
-typedef struct tesla_lifetime_event	tesla_lifetime_event;
-typedef struct tesla_lifetime_state	tesla_lifetime_state;
-typedef struct tesla_store		tesla_store;
-typedef struct tesla_transition		tesla_transition;
-typedef struct tesla_transitions	tesla_transitions;
+typedef struct watchman_automaton		watchman_automaton;
+typedef struct watchman_class		watchman_class;
+typedef struct watchman_instance		watchman_instance;
+typedef struct watchman_key		watchman_key;
+typedef struct watchman_lifetime_event	watchman_lifetime_event;
+typedef struct watchman_lifetime_state	watchman_lifetime_state;
+typedef struct watchman_store		watchman_store;
+typedef struct watchman_transition		watchman_transition;
+typedef struct watchman_transitions	watchman_transitions;
 
 
 /**
- * @internal Definition of @ref tesla_store.
+ * @internal Definition of @ref watchman_store.
  *
  * Modifications to this structure should only be made while a lock is held
  * or in a thread-local context.
  */
-struct tesla_store {
-	/** Number of slots to hold TESLA classes. */
+struct watchman_store {
+	/** Number of slots to hold WATCHMAN classes. */
 	uint32_t		 ts_length;
 
 	/** Actual slots that classes might be stored in. */
-	struct tesla_class	*ts_classes;
+	struct watchman_class	*ts_classes;
 
 	/**
 	 * Information about live/dead automata classes; may be shared among
@@ -353,78 +353,78 @@ struct tesla_store {
 	 *
 	 * For instance, the lifetime [enter syscall, exit syscall] is shared
 	 * by many automata we've written for the FreeBSD kernel. Each
-	 * @ref tesla_store should only record these events once.
+	 * @ref watchman_store should only record these events once.
 	 */
-	struct tesla_lifetime_state *ts_lifetimes;
+	struct watchman_lifetime_state *ts_lifetimes;
 
 	/** The number of lifetimes that we currently know about. */
 	uint32_t		ts_lifetime_count;
 };
 
 /**
- * Initialise @ref tesla_store internals.
+ * Initialise @ref watchman_store internals.
  * Locking is the responsibility of the caller.
  */
-int	tesla_store_init(tesla_store*, enum tesla_context context,
+int	watchman_store_init(watchman_store*, enum watchman_context context,
 		uint32_t classes, uint32_t instances);
 
 /**
- * Initialize @ref tesla_class internals.
+ * Initialize @ref watchman_class internals.
  * Locking is the responsibility of the caller.
  */
-int	tesla_class_init(struct tesla_class*, enum tesla_context context,
+int	watchman_class_init(struct watchman_class*, enum watchman_context context,
 		uint32_t instances);
 
 /*
  * XXXRW: temporarily, maximum number of classes and instances are hard-coded
  * constants.  In the future, this should somehow be more dynamic.
  */
-#define	TESLA_MAX_CLASSES		128
-#define	TESLA_MAX_INSTANCES		128
+#define	WATCHMAN_MAX_CLASSES		128
+#define	WATCHMAN_MAX_INSTANCES		128
 
 #if defined(_KERNEL) && defined(MALLOC_DECLARE)
 /*
- * Memory type for TESLA allocations in the kernel.
+ * Memory type for WATCHMAN allocations in the kernel.
  */
-MALLOC_DECLARE(M_TESLA);
+MALLOC_DECLARE(M_WATCHMAN);
 #endif
 
 /*
  * Context-specific automata management:
  */
-int32_t	tesla_class_global_postinit(struct tesla_class*);
-void	tesla_class_global_acquire(struct tesla_class*);
-void	tesla_class_global_release(struct tesla_class*);
-void	tesla_class_global_destroy(struct tesla_class*);
+int32_t	watchman_class_global_postinit(struct watchman_class*);
+void	watchman_class_global_acquire(struct watchman_class*);
+void	watchman_class_global_release(struct watchman_class*);
+void	watchman_class_global_destroy(struct watchman_class*);
 
-int32_t	tesla_class_perthread_postinit(struct tesla_class*);
-void	tesla_class_perthread_acquire(struct tesla_class*);
-void	tesla_class_perthread_release(struct tesla_class*);
-void	tesla_class_perthread_destroy(struct tesla_class*);
+int32_t	watchman_class_perthread_postinit(struct watchman_class*);
+void	watchman_class_perthread_acquire(struct watchman_class*);
+void	watchman_class_perthread_release(struct watchman_class*);
+void	watchman_class_perthread_destroy(struct watchman_class*);
 
 /*
  * Event notification:
  */
 #if defined(_KERNEL) && defined(KDTRACE_HOOKS)
-extern const struct tesla_event_handlers dtrace_handlers;
+extern const struct watchman_event_handlers dtrace_handlers;
 #endif
 
-void	ev_sunrise(enum tesla_context, const struct tesla_lifetime *);
-void	ev_sunset(enum tesla_context, const struct tesla_lifetime *);
-void	ev_new_instance(struct tesla_class *, struct tesla_instance *);
-void	ev_transition(struct tesla_class *, struct tesla_instance *,
-	    const struct tesla_transition *);
-void	ev_clone(struct tesla_class *, struct tesla_instance *orig,
-	    struct tesla_instance *copy, const struct tesla_transition *);
-void	ev_no_instance(struct tesla_class *, uint32_t symbol,
-	    const struct tesla_key *);
-void	ev_bad_transition(struct tesla_class *, struct tesla_instance *,
+void	ev_sunrise(enum watchman_context, const struct watchman_lifetime *);
+void	ev_sunset(enum watchman_context, const struct watchman_lifetime *);
+void	ev_new_instance(struct watchman_class *, struct watchman_instance *);
+void	ev_transition(struct watchman_class *, struct watchman_instance *,
+	    const struct watchman_transition *);
+void	ev_clone(struct watchman_class *, struct watchman_instance *orig,
+	    struct watchman_instance *copy, const struct watchman_transition *);
+void	ev_no_instance(struct watchman_class *, uint32_t symbol,
+	    const struct watchman_key *);
+void	ev_bad_transition(struct watchman_class *, struct watchman_instance *,
 	    uint32_t symbol);
-void	ev_err(const struct tesla_automaton *, int symbol, int errnum,
+void	ev_err(const struct watchman_automaton *, int symbol, int errnum,
 	    const char *);
-void	ev_accept(struct tesla_class *, struct tesla_instance *);
-void	ev_ignored(const struct tesla_class *, uint32_t symbol,
-	    const struct tesla_key *);
+void	ev_accept(struct watchman_class *, struct watchman_instance *);
+void	ev_ignored(const struct watchman_class *, uint32_t symbol,
+	    const struct watchman_key *);
 
 /*
  * Debug helpers.
@@ -453,7 +453,7 @@ void	ev_ignored(const struct tesla_class *, uint32_t symbol,
 
 
 /** Are we in (verbose) debug mode? */
-int32_t	tesla_debugging(const char*);
+int32_t	watchman_debugging(const char*);
 
 #ifndef NDEBUG
 
@@ -461,7 +461,7 @@ int32_t	tesla_debugging(const char*);
 
 /** Emit debugging information with a debug name (e.g., watchman.event). */
 #define DEBUG(dclass, ...) \
-	if (tesla_debugging(#dclass)) printf(__VA_ARGS__)
+	if (watchman_debugging(#dclass)) printf(__VA_ARGS__)
 
 #else // NDEBUG
 
@@ -473,38 +473,38 @@ int32_t	tesla_debugging(const char*);
 #endif
 
 /**
- * Assert that a @ref tesla_instance is an instance of a @ref tesla_class.
+ * Assert that a @ref watchman_instance is an instance of a @ref watchman_class.
  *
- * This could be expensive (a linear walk over all @ref tesla_instance in
+ * This could be expensive (a linear walk over all @ref watchman_instance in
  * @a tclass), so it should only be called from debug code.
  *
  * @param   i          the instance to test
  * @param   tclass     the expected class of @a i
  */
-void	assert_instanceof(struct tesla_instance *i, struct tesla_class *tclass);
+void	assert_instanceof(struct watchman_instance *i, struct watchman_class *tclass);
 
 /** Print a key into a buffer. */
-char*	key_string(char *buffer, const char *end, const struct tesla_key *);
+char*	key_string(char *buffer, const char *end, const struct watchman_key *);
 
-/** Print a @ref tesla_key to stderr. */
-void	print_key(const char *debug_name, const struct tesla_key *key);
+/** Print a @ref watchman_key to stderr. */
+void	print_key(const char *debug_name, const struct watchman_key *key);
 
-/** Print a @ref tesla_class to stderr. */
-void	print_class(const struct tesla_class*);
+/** Print a @ref watchman_class to stderr. */
+void	print_class(const struct watchman_class*);
 
-/** Print a human-readable version of a @ref tesla_transition. */
-void	print_transition(const char *debug, const struct tesla_transition *);
+/** Print a human-readable version of a @ref watchman_transition. */
+void	print_transition(const char *debug, const struct watchman_transition *);
 
-/** Print a human-readable version of a @ref tesla_transition into a buffer. */
+/** Print a human-readable version of a @ref watchman_transition into a buffer. */
 char*	sprint_transition(char *buffer, const char *end,
-    const struct tesla_transition *);
+    const struct watchman_transition *);
 
-/** Print a human-readable version of @ref tesla_transitions. */
-void	print_transitions(const char *debug, const struct tesla_transitions *);
+/** Print a human-readable version of @ref watchman_transitions. */
+void	print_transitions(const char *debug, const struct watchman_transitions *);
 
-/** Print a human-readable version of @ref tesla_transitions into a buffer. */
+/** Print a human-readable version of @ref watchman_transitions into a buffer. */
 char*	sprint_transitions(char *buffer, const char *end,
-    const struct tesla_transitions *);
+    const struct watchman_transitions *);
 
 /** Flag indicating whether ev_transition should be called. */
 extern int have_transitions;
@@ -513,4 +513,4 @@ extern int have_transitions;
 
 __END_DECLS
 
-#endif /* TESLA_INTERNAL_H */
+#endif /* WATCHMAN_INTERNAL_H */

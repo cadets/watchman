@@ -9,7 +9,7 @@
  * RUN: %t
  */
 
-#include "tesla_internal.h"
+#include "watchman_internal.h"
 #include "test_helpers.h"
 
 #include <assert.h>
@@ -18,21 +18,21 @@
 
 
 /** Some automata instances to look up (of more than one class). */
-struct tesla_instance *instances[6];
+struct watchman_instance *instances[6];
 const int32_t INSTANCES = sizeof(instances) / sizeof(instances[0]);
 
 /** Create an instance of an automata class using three key values. */
-void	create_instance(struct tesla_class*, struct tesla_instance**,
+void	create_instance(struct watchman_class*, struct watchman_instance**,
 	                int32_t key0, int32_t key1, int32_t key2);
 
 /**
- * Search through @ref instances using a pattern @ref tesla_key, returning a
+ * Search through @ref instances using a pattern @ref watchman_key, returning a
  * bitmask of which instances were matched.
  */
-int	search_for_pattern(struct tesla_class*, struct tesla_key *pattern);
+int	search_for_pattern(struct watchman_class*, struct watchman_key *pattern);
 
 
-struct tesla_lifetime shared_lifetime = {
+struct watchman_lifetime shared_lifetime = {
 	.tl_begin = {
 		.tle_repr = "cleanup",
 		.tle_length = sizeof("cleanup"),
@@ -45,15 +45,15 @@ struct tesla_lifetime shared_lifetime = {
 	},
 };
 
-struct tesla_automaton glob = {
+struct watchman_automaton glob = {
 	.ta_name = "glob_automaton",
-	.ta_description = "a class of TESLA automata",
+	.ta_description = "a class of WATCHMAN automata",
 	.ta_lifetime = &shared_lifetime,
 };
 
-struct tesla_automaton thr = {
+struct watchman_automaton thr = {
 	.ta_name = "thr_automaton",
-	.ta_description = "a class of TESLA automata",
+	.ta_description = "a class of WATCHMAN automata",
 	.ta_lifetime = &shared_lifetime,
 };
 
@@ -62,15 +62,15 @@ main(int argc, char **argv)
 {
 	install_default_signal_handler();
 
-	struct tesla_store *global_store;
-	struct tesla_class *glob_automaton;
-	check(tesla_store_get(TESLA_CONTEXT_GLOBAL, 1, 3, &global_store));
-	check(tesla_class_get(global_store, &glob, &glob_automaton));
+	struct watchman_store *global_store;
+	struct watchman_class *glob_automaton;
+	check(watchman_store_get(WATCHMAN_CONTEXT_GLOBAL, 1, 3, &global_store));
+	check(watchman_class_get(global_store, &glob, &glob_automaton));
 
-	struct tesla_store *perthread_store;
-	struct tesla_class *thr_automaton;
-	check(tesla_store_get(TESLA_CONTEXT_THREAD, 1, 3, &perthread_store));
-	check(tesla_class_get(perthread_store, &thr, &thr_automaton));
+	struct watchman_store *perthread_store;
+	struct watchman_class *thr_automaton;
+	check(watchman_store_get(WATCHMAN_CONTEXT_THREAD, 1, 3, &perthread_store));
+	check(watchman_class_get(perthread_store, &thr, &thr_automaton));
 
 	/* Create some automata instances. */
 	create_instance(glob_automaton, &instances[0], 42, 0, 1000);
@@ -89,7 +89,7 @@ main(int argc, char **argv)
 	}
 
 	// Ok, let's go looking for automata instances!
-	struct tesla_key pattern;
+	struct watchman_key pattern;
 
 	// keys[0] == 42 => {0,2,3,5}
 	pattern.tk_mask = 1 << 0;
@@ -131,41 +131,41 @@ main(int argc, char **argv)
 	       == 0x3F
 	);
 
-	tesla_class_put(glob_automaton);
-	tesla_class_put(thr_automaton);
+	watchman_class_put(glob_automaton);
+	watchman_class_put(thr_automaton);
 
 	return 0;
 }
 
 
 void
-create_instance(struct tesla_class *tclass, struct tesla_instance **instance,
+create_instance(struct watchman_class *tclass, struct watchman_instance **instance,
                 int32_t key0, int32_t key1, int32_t key2)
 {
-	struct tesla_key key;
+	struct watchman_key key;
 	key.tk_mask = 0x07;
 	key.tk_keys[0] = key0;
 	key.tk_keys[1] = key1;
 	key.tk_keys[2] = key2;
 
-	check(tesla_instance_new(tclass, &key, 0, instance));
+	check(watchman_instance_new(tclass, &key, 0, instance));
 
 	assert(instance != NULL);
 }
 
 int
-search_for_pattern(struct tesla_class *tclass, struct tesla_key *pattern) {
+search_for_pattern(struct watchman_class *tclass, struct watchman_key *pattern) {
 	uint32_t len = 20;
-	struct tesla_instance* matches[len];
+	struct watchman_instance* matches[len];
 
 	int found = 0;
 
-	int32_t err = tesla_match(tclass, pattern, matches, &len);
-	assert(err == TESLA_SUCCESS);
+	int32_t err = watchman_match(tclass, pattern, matches, &len);
+	assert(err == WATCHMAN_SUCCESS);
 	assert(len >= 0);
 
 	for (uint32_t i = 0; i < len; i++) {
-		struct tesla_instance *inst = matches[i];
+		struct watchman_instance *inst = matches[i];
 		assert(inst != NULL);
 
 		for (uint32_t j = 0; j < INSTANCES; j++)

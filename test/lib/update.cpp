@@ -18,7 +18,7 @@
 
 #include "TestHarness.h"
 
-#include "tesla_internal.h"
+#include "watchman_internal.h"
 #include "test_helpers.h"
 
 #include <memory>
@@ -27,40 +27,40 @@
 #include <err.h>
 #include <stdio.h>
 
-int	count(struct tesla_store*, const struct tesla_key*);
+int	count(struct watchman_store*, const struct watchman_key*);
 
-#define PRINT(...) DEBUG(libtesla.test.update, __VA_ARGS__)
+#define PRINT(...) DEBUG(libwatchman.test.update, __VA_ARGS__)
 
 const char *event_descriptions[] = { "foo" };
 
-class UpdateTest : public LibTeslaTest
+class UpdateTest : public LibWatchmanTest
 {
 public:
 	void run();
 
 private:
-	int count(struct tesla_store *store, const struct tesla_key *key);
+	int count(struct watchman_store *store, const struct watchman_key *key);
 
-	struct tesla_transition begin = {
+	struct watchman_transition begin = {
 		.from = 0,
 		.to = 1,
-		.flags = TESLA_TRANS_INIT,
+		.flags = WATCHMAN_TRANS_INIT,
 	};
 
-	struct tesla_transition end = {
+	struct watchman_transition end = {
 		.from = 1,
 		.to = 999,
-		.flags = TESLA_TRANS_CLEANUP,
+		.flags = WATCHMAN_TRANS_CLEANUP,
 	};
 
-	struct tesla_transition t[3];
-	struct tesla_transitions trans[3] = {
+	struct watchman_transition t[3];
+	struct watchman_transitions trans[3] = {
 		{ .length = 1, .transitions = &begin },
 		{ .length = 1, .transitions = t },
 		{ .length = 1, .transitions = &end },
 	};
 
-	struct tesla_lifetime lifetime = {
+	struct watchman_lifetime lifetime = {
 		.tl_begin = {
 			.tle_repr = "init",
 			.tle_length = sizeof("init"),
@@ -73,7 +73,7 @@ private:
 		},
 	};
 
-	struct tesla_automaton automaton = {
+	struct watchman_automaton automaton = {
 		.ta_name = "unique_name",
 		.ta_description = "update.cpp: generate(automaton)",
 		.ta_alphabet_size = 3,
@@ -98,11 +98,11 @@ main(int argc, char **argv)
 
 void UpdateTest::run()
 {
-	const enum tesla_context context = TESLA_CONTEXT_GLOBAL;
+	const enum watchman_context context = WATCHMAN_CONTEXT_GLOBAL;
 	const int32_t instances_in_class = 10;
 
-	struct tesla_store *store;
-	check(tesla_store_get(context, 1, instances_in_class, &store));
+	struct watchman_store *store;
+	check(watchman_store_get(context, 1, instances_in_class, &store));
 
 	// Test the following sequence of automata update events:
 	//
@@ -114,10 +114,10 @@ void UpdateTest::run()
 	// (2,X,X,3): 5->6       fork   (2,X,X,X):5 -> (2,X,X,3):6
 	// (2,X,X,4): 1->7       fork   (X,X,X,X):1 -> (2,X,X,4):7
 
-	struct tesla_key key = { .tk_freemask = 0 };
+	struct watchman_key key = { .tk_freemask = 0 };
 
 
-	const struct tesla_key
+	const struct watchman_key
 		any = { .tk_mask = 0, .tk_freemask = 0 },
 		one = { .tk_mask = 1, .tk_keys[0] = 1, .tk_freemask = 0 },
 		two = { .tk_mask = 1, .tk_keys[0] = 2, .tk_freemask = 0 }
@@ -130,10 +130,10 @@ void UpdateTest::run()
 	t[0].from_mask = 0x0;
 	t[0].to = 1;
 	t[0].to_mask = 0x0;
-	t[0].flags = TESLA_TRANS_INIT;
+	t[0].flags = WATCHMAN_TRANS_INIT;
 
 	expectedEvents.push(Sunrise);
-	tesla_sunrise(context, automaton.ta_lifetime);
+	watchman_sunrise(context, automaton.ta_lifetime);
 
 	assert(count(store, &any) == 0);
 	assert(count(store, &one) == 0);
@@ -151,7 +151,7 @@ void UpdateTest::run()
 
 	expectedEvents.push(NewInstance);
 	expectedEvents.push(Clone);
-	tesla_update_state(context, &automaton, 1, &key);
+	watchman_update_state(context, &automaton, 1, &key);
 	assert(lastEvent->transition == t);
 	assert(lastEvent->inst->ti_state == 1);
 	assert(lastEvent->inst->ti_key.tk_mask == 0);
@@ -174,7 +174,7 @@ void UpdateTest::run()
 	t[0].flags = 0;
 
 	expectedEvents.push(Clone);
-	tesla_update_state(context, &automaton, 1, &key);
+	watchman_update_state(context, &automaton, 1, &key);
 	assert(lastEvent->transition == t);
 	assert(lastEvent->inst->ti_state == 2);
 	assert(lastEvent->inst->ti_key.tk_mask == 0x1);
@@ -197,7 +197,7 @@ void UpdateTest::run()
 	t[0].flags = 0;
 
 	expectedEvents.push(Transition);
-	tesla_update_state(context, &automaton, 1, &key);
+	watchman_update_state(context, &automaton, 1, &key);
 	assert(lastEvent->transition == t);
 	assert(lastEvent->inst->ti_state == 4);
 	assert(lastEvent->inst->ti_key.tk_mask == 0x3);
@@ -217,7 +217,7 @@ void UpdateTest::run()
 	t[0].flags = 0;
 
 	expectedEvents.push(Clone);
-	tesla_update_state(context, &automaton, 1, &key);
+	watchman_update_state(context, &automaton, 1, &key);
 	assert(lastEvent->transition == t);
 	assert(lastEvent->inst->ti_state == 1);
 	assert(lastEvent->inst->ti_key.tk_mask == 0);
@@ -240,7 +240,7 @@ void UpdateTest::run()
 	t[0].flags = 0;
 
 	expectedEvents.push(Clone);
-	tesla_update_state(context, &automaton, 1, &key);
+	watchman_update_state(context, &automaton, 1, &key);
 	assert(lastEvent->transition == t);
 	assert(lastEvent->inst->ti_state == 5);
 	assert(lastEvent->inst->ti_key.tk_mask == 0x1);
@@ -263,7 +263,7 @@ void UpdateTest::run()
 	t[0].flags = 0;
 
 	expectedEvents.push(Clone);
-	tesla_update_state(context, &automaton, 1, &key);
+	watchman_update_state(context, &automaton, 1, &key);
 	assert(lastEvent->inst->ti_state == 1);
 	assert(lastEvent->inst->ti_key.tk_mask == 0);
 	assert(lastEvent->copy->ti_state == 7);
@@ -276,17 +276,17 @@ void UpdateTest::run()
 
 
 int
-UpdateTest::count(struct tesla_store *store, const struct tesla_key *key)
+UpdateTest::count(struct watchman_store *store, const struct watchman_key *key)
 {
 	uint32_t len = 20;
-	struct tesla_instance* matches[len];
-	struct tesla_class *cls;
+	struct watchman_instance* matches[len];
+	struct watchman_class *cls;
 
-	check(tesla_class_get(store, &automaton, &cls));
+	check(watchman_class_get(store, &automaton, &cls));
 
-	check(tesla_match(cls, key, matches, &len));
+	check(watchman_match(cls, key, matches, &len));
 
-	tesla_class_put(cls);
+	watchman_class_put(cls);
 
 	return len;
 }

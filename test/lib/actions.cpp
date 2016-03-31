@@ -1,9 +1,9 @@
 /**
  * @file actions.cpp
- * Tests @ref tesla_action.
+ * Tests @ref watchman_action.
  *
- * @ref tesla_action decides what we should do to a @ref tesla_instance in a
- * situation described by a @ref tesla_key and a @ref tesla_transition.
+ * @ref watchman_action decides what we should do to a @ref watchman_instance in a
+ * situation described by a @ref watchman_key and a @ref watchman_transition.
  *
  * Commands for llvm-lit:
  * RUN: clang++ %cxxflags %ldflags %s -o %t
@@ -11,26 +11,26 @@
  * RUN: %filecheck -input-file %t.out %s
  */
 
-#include "tesla_internal.h"
+#include "watchman_internal.h"
 #include "test_helpers.h"
 
 #include <stdio.h>
 
-#define DEBUG_NAME "libtesla.test.actions"
-#define PRINT(...) DEBUG(libtesla.test.actions, __VA_ARGS__)
+#define DEBUG_NAME "libwatchman.test.actions"
+#define PRINT(...) DEBUG(libwatchman.test.actions, __VA_ARGS__)
 
-void	log_action(tesla_instance, tesla_key, tesla_transitions);
-const char *action_str(enum tesla_action_t);
+void	log_action(watchman_instance, watchman_key, watchman_transitions);
+const char *action_str(enum watchman_action_t);
 
 int
 main(int argc, char **argv)
 {
 	install_default_signal_handler();
 
-	tesla_instance inst;
-	tesla_key event_data;
-	tesla_transition t_storage[10];
-	tesla_transitions t;
+	watchman_instance inst;
+	watchman_key event_data;
+	watchman_transition t_storage[10];
+	watchman_transitions t;
 	t.transitions = t_storage;
 
 	uint32_t x = 42;
@@ -248,7 +248,7 @@ main(int argc, char **argv)
 	t.transitions[0].from_mask  = 1;
 	t.transitions[0].to         = 2;
 	t.transitions[0].to_mask    = 0;
-	t.transitions[0].flags      = TESLA_TRANS_CLEANUP;
+	t.transitions[0].flags      = WATCHMAN_TRANS_CLEANUP;
 
 	t.transitions[1].from       = 3;
 	t.transitions[1].from_mask  = 1;
@@ -284,7 +284,7 @@ main(int argc, char **argv)
 }
 
 const char*
-action_str(enum tesla_action_t action)
+action_str(enum watchman_action_t action)
 {
 	switch (action) {
 	case UPDATE:  return "UPDATE";
@@ -297,11 +297,11 @@ action_str(enum tesla_action_t action)
 }
 
 void
-log_action(tesla_instance inst, tesla_key event_data, tesla_transitions t)
+log_action(watchman_instance inst, watchman_key event_data, watchman_transitions t)
 {
-	const tesla_transition *trigger = NULL;
-	enum tesla_action_t action =
-		tesla_action(&inst, &event_data, &t, &trigger);
+	const watchman_transition *trigger = NULL;
+	enum watchman_action_t action =
+		watchman_action(&inst, &event_data, &t, &trigger);
 
 	PRINT("%d:", inst.ti_state);
 	print_key(DEBUG_NAME, &inst.ti_key);

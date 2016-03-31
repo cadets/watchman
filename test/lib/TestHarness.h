@@ -43,13 +43,13 @@
 #define NULL 0
 #endif
 
-typedef struct tesla_automaton Automaton;
-typedef struct tesla_class Class;
-typedef struct tesla_instance Instance;
-typedef struct tesla_key Key;
-typedef struct tesla_lifetime Lifetime;
-typedef struct tesla_transition Trans;
-typedef struct tesla_transitions TransSet;
+typedef struct watchman_automaton Automaton;
+typedef struct watchman_class Class;
+typedef struct watchman_instance Instance;
+typedef struct watchman_key Key;
+typedef struct watchman_lifetime Lifetime;
+typedef struct watchman_transition Trans;
+typedef struct watchman_transitions TransSet;
 
 
 enum EventType {
@@ -68,10 +68,10 @@ enum EventType {
 
 class Event;
 
-class LibTeslaTest
+class LibWatchmanTest
 {
 public:
-	LibTeslaTest();
+	LibWatchmanTest();
 	void Ev(Event*);
 
 protected:
@@ -79,18 +79,18 @@ protected:
 	std::auto_ptr<Event> lastEvent;
 };
 
-LibTeslaTest *Test = NULL;
+LibWatchmanTest *Test = NULL;
 
 
 class Event {
 public:
-	static void SunriseEvent(enum tesla_context c, const Lifetime *l)
+	static void SunriseEvent(enum watchman_context c, const Lifetime *l)
 	{
 		Test->Ev(new Event(Sunrise, NULL, NULL, NULL, NULL,
 		                   NULL, l, c));
 	}
 
-	static void SunsetEvent(enum tesla_context c, const Lifetime *l)
+	static void SunsetEvent(enum watchman_context c, const Lifetime *l)
 	{
 		Test->Ev(new Event(Sunset, NULL, NULL, NULL, NULL,
 		                   NULL, l, c));
@@ -142,7 +142,7 @@ public:
 		                   symbol));
 	}
 
-	static struct tesla_event_handlers handlers;
+	static struct watchman_event_handlers handlers;
 
 	const EventType type;
 	const Class *cls;
@@ -196,7 +196,7 @@ public:
 			oss
 				<< "  error:        "
 				<< err
-				<< " (" << tesla_strerror(err) << ")\n"
+				<< " (" << watchman_strerror(err) << ")\n"
 			;
 
 		if (errMessage)
@@ -217,7 +217,7 @@ public:
 };
 
 
-struct tesla_event_handlers Event::handlers = {
+struct watchman_event_handlers Event::handlers = {
 	.teh_sunrise		= SunriseEvent,
 	.teh_sunset		= SunsetEvent,
 	.teh_init		= NewInstanceEvent,
@@ -231,13 +231,13 @@ struct tesla_event_handlers Event::handlers = {
 };
 
 
-LibTeslaTest::LibTeslaTest()
+LibWatchmanTest::LibWatchmanTest()
 {
 	Test = this;
-	assert(tesla_set_event_handler(&Event::handlers) == TESLA_SUCCESS);
+	assert(watchman_set_event_handler(&Event::handlers) == WATCHMAN_SUCCESS);
 }
 
-void LibTeslaTest::Ev(Event *e)
+void LibWatchmanTest::Ev(Event *e)
 {
 	assert(!expectedEvents.empty());
 
