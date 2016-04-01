@@ -19,16 +19,6 @@ set(TESTS
 # Ignore "unused parameter 'int argc'" warnings in test programs.
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wno-unused-parameter")
 
-foreach(test ${TESTS})
-	add_executable(${test}.test ${test})
-	target_link_libraries(${test}.test watchman)
-
-	if( ${CMAKE_SYSTEM_NAME} MATCHES FreeBSD )
-		target_link_libraries(${test}.test ${EXECINFO_LIBRARY})
-	endif( ${CMAKE_SYSTEM_NAME} MATCHES FreeBSD )
-endforeach(test)
-
-
 add_custom_target(libwatchman-test
 	COMMAND
 		${LLVM_LIT} ${LIT_OPTIONS} ${CMAKE_CURRENT_SOURCE_DIR}
@@ -36,4 +26,15 @@ add_custom_target(libwatchman-test
 		--param=source_dir=${CMAKE_SOURCE_DIR}
 		--param=output_dir=${CMAKE_BINARY_DIR}
 		${LIT_EXTRA}
+	DEPENDS watchman
 	COMMENT "Testing libwatchman")
+
+foreach(test ${TESTS})
+	add_executable(${test}.test ${test})
+	target_link_libraries(${test}.test watchman)
+	add_dependencies(libwatchman-test ${test}.test)
+
+	if( ${CMAKE_SYSTEM_NAME} MATCHES FreeBSD )
+		target_link_libraries(${test}.test ${EXECINFO_LIBRARY})
+	endif( ${CMAKE_SYSTEM_NAME} MATCHES FreeBSD )
+endforeach(test)
