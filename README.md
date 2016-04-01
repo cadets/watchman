@@ -1,4 +1,8 @@
+<img src="doc/images/watchman.png" alt="WATCHMAN logo" align="right"/>
+
 # WATCHMAN
+
+[![Build Status](https://allendale.engr.mun.ca/jenkins/buildStatus/icon?job=WATCHMAN)](https://allendale.engr.mun.ca/jenkins/job/WATCHMAN/)
 
 WATCHMAN is a tool for tracking temporal automata over time.
 Such automata, pioneered in the TESLA system, are useful for describing
