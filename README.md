@@ -26,16 +26,18 @@ All users should download and build from source.
 ### Dependencies
 
 WATCHMAN currently has no **mandatory** run-time dependencies.
-There are two mandatory build-time dependencies (in addition to a compiler
-and a standard build tool such as `make` or
-[Ninja](https://ninja-build.org)).
-We use [CMake](https://cmake.org) for build configuration
+Build-time dependencies include:
 
-: we use the
-[LLVM Integrated Tester](http://llvm.org/docs/CommandGuide/lit.html) for
-running tests, and you cannot build WATCHMAN without the tests.
-On FreeBSD, `llvm-lit` can be obtained any of the LLVM packages, whether
-bleeding-edge (`llvm-devel`) or stable (`llvm38`, `llvm37`, etc.).
+* [CMake](https://cmake.org) for build configuration
+* `make` or [Ninja](https://ninja-build.org)) for building
+* **optional:** [CCache](https://ccache.samba.org) for build acceleration:
+    * the WATCHMAN build will automatically use `ccache` if it is in your
+      `PATH`
+    * FreeBSD: `pkg install ccache`
+
+* the [LLVM Integrated Tester](http://llvm.org/docs/CommandGuide/lit.html) for
+  testing
+    * FreeBSD: `pkg install llvm-devel` or `pkg install llvm38` (or `37`, etc.),
 
 We anticipate adding support for multiple event sources in the future, which
 will likely bring **optional** dependencies on [Avro](https://avro.apache.org),
@@ -82,16 +84,6 @@ $ cmake -G Ninja -D CMAKE_BUILD_TYPE=${BUILD_TYPE} ..
 -- The CXX compiler identification is Clang 3.7.1
 [...]
 $ ninja
-```
-
-[CCache](https://ccache.samba.org) can be used by setting the
-`CMAKE_C_COMPILER` and `CMAKE_CXX_COMPILER` variables to CCache links:
-
-```sh
-$ cmake \
-	-D CMAKE_C_COMPILER=/usr/local/libexec/ccache/cc \
-	-D CMAKE_CXX_COMPILER=/usr/local/libexec/ccache/c++ \
-	[...]
 ```
 
 

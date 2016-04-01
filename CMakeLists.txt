@@ -25,6 +25,16 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wnested-externs -Wredundant-decls")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wold-style-definition")
 
 
+#
+# Use CCache if available:
+#
+find_program(CCACHE_FOUND ccache)
+if (CCACHE_FOUND)
+	set_property(GLOBAL PROPERTY RULE_LAUNCH_COMPILE ccache)
+	set_property(GLOBAL PROPERTY RULE_LAUNCH_LINK ccache)
+endif ()
+
+
 add_subdirectory(lib)
 add_subdirectory(test)
 
