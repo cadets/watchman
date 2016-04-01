@@ -6,9 +6,14 @@ set(LLVM_LIT_NAMES "llvm-lit llvm-lit-devel llvm-lit38 llvm-lit37 llvm-lit36")
 
 if (NOT LLVM_LIT)
   message(STATUS "Looking for LLVM Integrated Tester")
-  find_program(LLVM_LIT NAMES ${LLVM_LIT_NAMES})
+  find_program(LLVM_LIT_EXECUTABLE
+    NAMES llvm-lit llvm-lit-devel llvm-lit38 llvm-lit37 llvm-lit36
+    DOC "LLVM Integrated Tester"
+  )
 
-  if (NOT LLVM_LIT)
+  if (LLVM_LIT_EXECUTABLE)
+    set(LLVM_LIT "${LLVM_LIT_EXECUTABLE}")
+  else ()
     message(FATAL_ERROR "LLVM Integrated Tester not found!\n"
       "Try re-running CMAKE with the argument -D LLVM_LIT=/path/to/llvm-lit "
       "or with PATH set to include a directory containing any of:\n"
